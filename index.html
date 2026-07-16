@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>학급 문명 게임</title>
+  <style>
+    :root {
+      --card: rgba(25, 25, 25, 0.85); /* 배경이 보이기 위해 투명도 소폭 조절 */
+      --text-main: #ffffff;
+      --text-sub: #cccccc;
+      --accent: #f1c40f;
+      --danger: #e74c3c;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    /* 배경 이미지가 자연스럽게 바뀌도록 body 스타일 수정 */
+    body {
+      font-family: "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+      min-height: 100vh;
+      color: var(--text-main);
+      background-color: #121212;
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+      transition: background-image 0.5s ease-in-out; /* 배경 전환 효과 */
+    }
+    .app { min-height: 100vh; }
+    
+    /* 배경이 너무 밝아 글씨가 안 보이는 것을 방지하는 어두운 필터 적용 */
+    .overlay { 
+      min-height: 100vh; 
+      padding: 16px; 
+      background: rgba(18, 18, 18, 0.6); 
+      backdrop-filter: blur(2px);
+    }
+    
+    header.title-bar {
+      text-align: center;
+      color: #fff;
+      font-size: 2rem;
+      font-weight: 700;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+      margin-bottom: 12px;
+    }
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    .left-controls { display: flex; gap: 8px; flex-wrap: wrap; }
+    .btn {
+      border: none;
+      border-radius: 10px;
+      padding: 10px 16px;
+      font-weight: 600;
+      cursor: pointer;
+      background: #2c2c2c;
+      color: #fff;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+    }
+    .btn:hover { filter: brightness(1.2); }
+    .btn:disabled { opacity: 0.3; cursor: not-allowed; filter: none !important; }
+    .btn-danger { background: #5c1d1d; color: #ff9999; }
+    .btn-primary { background: #1a446c; color: #99ccff; }
+    .btn-gold { background: #5c4d1d; color: #ffeb99; }
+    .btn-settle { background: #1d5c2d; color: #99ffaa; }
+    .btn-undo { background: #3d1d5c; color: #e199ff; }
+    
+    .stage-select-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 10px;
+      margin: 16px 0;
+    }
+    .btn-stage-pick {
+      padding: 12px;
+      font-size: 0.95rem;
+      text-align: center;
+      border: 2px solid #444;
+      background: #222;
+      color: #fff;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-stage-pick:hover { border-color: var(--accent); background: #2a2a2a; }
+    .btn-stage-pick.current { border-color: #3498db; background: #1a446c; font-weight: 700; }
+
+    .sheet-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+    .sheet-tab {
+      padding: 10px 14px;
+      border-radius: 10px 10px 0 0;
+      background: #2c2c2c;
+      color: #aaa;
+      cursor: pointer;
+      font-weight: 600;
+      border: 2px solid transparent;
+    }
+    .sheet-tab.active { background: #3a3a3a; color: #fff; border-color: var(--accent); }
+    
+    .stage-panel {
+      background: var(--card);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 16px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+      border: 1px solid #333;
+    }
+    .stage-name { font-size: 1.5rem; font-weight: 700; margin-bottom: 6px; color: var(--accent); }
+    .stage-desc { color: var(--text-sub); margin-bottom: 14px; font-size: 1.05rem; }
+    
+    .stage-info-box {
+      background: rgba(20, 20, 20, 0.6);
+      border-radius: 10px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      border: 1px dashed #555;
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+    .stage-info-item { margin-bottom: 4px; }
+    .stage-info-item strong { color: #f1c40f; }
+
+    .gauge-wrap { margin-top: 8px; margin-bottom: 12px; }
+    .gauge-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.9rem;
+      margin-bottom: 4px;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+    .gauge-bar { height: 22px; background: #222; border-radius: 999px; overflow: hidden; border: 1px solid #444; }
+    .gauge-fill { height: 100%; background: linear-gradient(90deg, #f1c40f, #e67e22); border-radius: 999px; transition: width 0.4s; }
+    .divider { height: 3px; background: linear-gradient(90deg, transparent, #444, transparent); margin: 20px 0; }
+    
+    .dept-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    @media (max-width: 900px) { .dept-grid { grid-template-columns: 1fr; } }
+    .dept-card {
+      background: var(--card);
+      border-radius: 20px;
+      padding: 16px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+      border: 1px solid #333;
+    }
+    .dept-header-row { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; flex-wrap: nowrap; min-width: 0; }
+    .dept-badge {
+      background: linear-gradient(135deg, #2c6fad, #1a446c);
+      color: #fff;
+      border-radius: 10px;
+      padding: 4px 10px;
+      font-weight: 700;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+      flex-shrink: 0;
+    }
+    .dept-badge input { border: none; background: transparent; color: #fff; font-weight: 700; font-size: 0.9rem; width: 52px; text-align: center; outline: none; }
+    .group-label { font-weight: 600; color: var(--text-sub); flex-shrink: 0; white-space: nowrap; }
+    .group-label input { border: 1px solid #444; background: #222; color: #fff; border-radius: 8px; padding: 3px 8px; font-weight: 600; font-size: 0.85rem; width: 54px; outline: none; }
+    .group-score { font-size: 0.95rem; font-weight: 700; color: #5ba3e8; white-space: nowrap; flex-shrink: 0; margin-left: 2px; }
+    .icon-btns { display: flex; gap: 4px; margin-left: auto; }
+    .icon-btn { width: 30px; height: 30px; border-radius: 50%; border: none; cursor: pointer; font-size: 0.95rem; background: #333; box-shadow: 0 2px 4px rgba(0,0,0,0.4); }
+    .icon-btn.used { opacity: 0.3; box-shadow: inset 0 0 0 2px #555; }
+    .role-list { margin-top: 10px; }
+    .role-item { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+    .role-item input[type="text"] { flex: 1; border: 1px solid #444; background: #222; color: #fff; border-radius: 8px; padding: 6px 8px; }
+    .daily-input { margin-top: 8px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .daily-input input { width: 60px; padding: 6px; border-radius: 8px; border: 1px solid #444; background: #222; color: #fff; }
+    
+    .modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 100; align-items: center; justify-content: center; padding: 16px; }
+    .modal-backdrop.open { display: flex; }
+    .modal { background: #222; color: #fff; border-radius: 16px; max-width: 900px; width: 100%; max-height: 85vh; overflow: auto; padding: 20px; border: 1px solid #444; }
+    .modal h2 { margin-bottom: 12px; }
+    .modal-close { float: right; border: none; background: #333; color: #fff; border-radius: 8px; padding: 6px 12px; cursor: pointer; }
+    
+    .sheet-panel {
+      display: none;
+      background: #1e1e1e;
+      border-radius: 0 0 16px 16px;
+      padding: 16px;
+      margin-top: -8px;
+      margin-bottom: 16px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+      border: 1px solid #333;
+      border-top: none;
+    }
+    .sheet-panel.open { display: block; }
+    .table-scroll-container {
+      max-height: 400px;
+      overflow-y: auto;
+      margin-top: 10px;
+      border: 1px solid #444;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    th, td { border: 1px solid #444; padding: 8px; text-align: center; }
+    th { background: #2c2c2c; color: #fff; position: sticky; top: 0; z-index: 1; }
+    td { background: #1e1e1e; color: #fff; }
+    
+    .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #333; color: #fff; padding: 12px 24px; border-radius: 999px; opacity: 0; transition: opacity 0.3s; z-index: 200; pointer-events: none; border: 1px solid #555; }
+    .toast.show { opacity: 1; }
+    .rank-badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 0.75rem; font-weight: 700; }
+    .rank-평민 { background: #444; color: #aaa; }
+    .rank-양반 { background: #5c4d1d; color: #ffeb99; }
+    .rank-관직 { background: #1a446c; color: #99ccff; }
+    .rank-소비자 { background: #1d5c2d; color: #99ffaa; }
+    .rank-투자자 { background: #1a446c; color: #99ccff; }
+    .rank-재벌 { background: #5c4d1d; color: #ffeb99; }
+    
+    .meta-info { font-size: 0.85rem; color: var(--text-sub); margin-top: 8px; }
+    .setting-section { margin: 16px 0; padding: 16px; background: #2c2c2c; border-radius: 12px; border: 1px solid #444; }
+    select { background: #333; color: #fff; border: 1px solid #555; }
+    textarea { width: 100%; height: 80px; background: #111; color: #aaa; border: 1px solid #444; border-radius: 8px; padding: 8px; font-family: monospace; font-size: 0.8rem; resize: vertical; margin-top: 6px; }
+  </style>
+</head>
+<body>
+  <div class="app" id="app">
+    <div class="overlay">
+      <header class="title-bar">학급 문명 게임</header>
+
+      <div class="top-bar">
+        <div class="left-controls">
+          <button class="btn btn-undo" id="undoBtn" onclick="undoAction()" disabled>↩ 되돌리기</button>
+          <button class="btn btn-danger" onclick="openModal('penalty')">벌점</button>
+          <button class="btn btn-primary" onclick="collectTax()">세금</button>
+          <button class="btn btn-gold" onclick="openModal('shop')">매점</button>
+          <button class="btn btn-settle" onclick="manualSettleDay()">하루 마감</button>
+          <button class="btn" onclick="openModal('settings')">설정</button>
+        </div>
+        <div class="sheet-tabs">
+          <div class="sheet-tab" data-sheet="civilization" onclick="switchSheet('civilization')">문명 점수</div>
+          <div class="sheet-tab" data-sheet="department" onclick="switchSheet('department')">부서 점수</div>
+          <div class="sheet-tab" data-sheet="personal" onclick="switchSheet('personal')">개인 점수</div>
+        </div>
+      </div>
+
+      <div class="stage-panel">
+        <div class="stage-name" id="stageName"></div>
+        <div class="stage-desc" id="stageDesc"></div>
+        
+        <div class="stage-info-box" id="stageInfoBox"></div>
+
+        <div class="gauge-wrap">
+          <div class="gauge-label">
+            <span>현재 점수 / Unlock 점수</span>
+            <span id="gaugeText">0 / 100 (0%)</span>
+          </div>
+          <div class="gauge-bar"><div class="gauge-fill" id="gaugeFill" style="width:0%"></div></div>
+          <p class="meta-info" id="gaugeMeta"></p>
+        </div>
+        
+        <button class="btn btn-primary" id="homeNextStageBtn" onclick="tryUnlock()" style="width: 100%; padding: 12px; font-size: 1.05rem;" disabled>
+          🚀 다음 단계 (Unlock)
+        </button>
+      </div>
+
+      <div id="sheetCivilization" class="sheet-panel"></div>
+      <div id="sheetDepartment" class="sheet-panel"></div>
+      <div id="sheetPersonal" class="sheet-panel"></div>
+
+      <div class="divider"></div>
+      <div class="dept-grid" id="deptGrid"></div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="modalBackdrop" onclick="if(event.target===this)closeModal()">
+    <div class="modal" id="modalContent"></div>
+  </div>
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // 각 시대 객체에 bg 주소 추가 (여기에 웹 이미지 주소를 넣어주세요)
+    const STAGES = [
+      { name: "1. 선사 시대", desc: "생존을 위해 소통하고 뭉쳐라!", mission: "부족민 정찰대 (우리 반 친구 모두와 대화 나누기)", welfare: "동굴 대피권 (오늘 하루는 쉬고 싶소!) 발표 면제권", unlock: 100, bg: "https://lh3.googleusercontent.com/d/1zLe4VRKAX4TjWcaEzwhXDLFDUzSOgSSb" },
+      { name: "2. 농경 시대", desc: "정착 생활을 시작하며 협동하고 성실하게 일하라!", mission: "품앗이 (점심 시간 전 자기 자리 청소 완벽히 하기 10회)", welfare: "새참 타임 (과자파티)", unlock: 100, bg: "https://lh3.googleusercontent.com/d/19T_S5rLVy-qyTsrtwjhe-K8Fx3zBKO1f" },
+      { name: "3. 삼국 시대", desc: "세 나라가 화려한 문화를 꽃피워라!", mission: "화랑도 육성 (예쁜 글씨 쓰기 10회)", welfare: "골품제 우선권 (하루 동안 원하는 자리 앉기)", unlock: 100, bg: "https://lh3.googleusercontent.com/d/1iXG2IBY0L3hXwQe0_SJ-S3AorO_FHfEh" },
+      { name: "4. 고려 시대", desc: "여러 나라와 교류하라!", mission: "팔만대장경 (다른 모둠 친구들과 교류하며 우리 반의 공동 정신을 기록물로 남기기)", welfare: "연등회 (학급 축제의 날)", unlock: 100, bg: "https://lh3.googleusercontent.com/d/1shMlc5I0lOmjPUMn4xEQ7Af5D_lXLxdJ" },
+      { name: "5. 조선 시대", desc: "예의를 지키거라!", mission: "훈민정음 (바른 언어 주간 성공하기)", welfare: "암행어사 마패 (절대 권력! 규칙 단속!)", unlock: 100, bg: "https://lh3.googleusercontent.com/d/1zi3dRItcYx-Kpr0PCGQpUgmRqmqv8EYx" },
+      { name: "6. 산업 혁명", desc: "공장처럼 빈틈 없이 생활하라!", mission: "타이머 Time is Money (수업 시작 종 치기 전, 자리에 앉아 책 펴기 연속 10회 성공)", welfare: "주4일제 (원하는 요일 하루는 청소와 종례 면제하고 칼퇴)", unlock: 150, bg: "https://lh3.googleusercontent.com/d/1yeKaMBrnY_POA61Lb7WsAXzqlgP2q-XI" },
+      { name: "7. 디지털 문명", desc: "정보를 차지하라!", mission: "한줄 추천 (읽은 책 중 추천하고 싶은 책 한줄평 쓰기)", welfare: "데이터 무제한권 (하루 점심시간 원하는 뮤비 틀기)", unlock: 100, bg: "https://lh3.googleusercontent.com/d/1-KcGVPD30LhkDc5W8eaZfSq171Y6ZxLX" },
+      { name: "8. 미래 AI 문명", desc: "인공지능을 이겨라!", mission: "우리 반의 고질적인 문제를 해결하기", welfare: "취향 저격 알고리즘 (그 과목에서 우리 모둠이 원하는 활동)", unlock: 100, bg: "https://lh3.googleusercontent.com/d/1EUSK6-8JeBF7E1j3e7e3Ej3G-9ioxGkX" },
+      { name: "9. 우주 문명", desc: "은하계를 통일하라!", mission: "은하계 대통합 (새로운 친구와 쉬는 시간 5회 보내기)", welfare: "무중력 데이 (자율 좌석)", unlock: 150, bg: "https://lh3.googleusercontent.com/d/1YUYuKQxxBcODHOM73m9VDj2TY_tpvZJu" },
+    ];
+
+    const DEFAULT_DEPTS = [
+      { name: "복지부", group: "1모둠", roles: ["우유", "급식 알리미", "쉬는시간 이벤트 기획", "보드게임 정리 단속"] },
+      { name: "환경부", group: "2모둠", roles: ["교실 앞뒤 쓸기", "사물함/서랍 체크", "교실 꾸미기", "분리수거"] },
+      { name: "교통부", group: "3모둠", roles: ["심부름", "줄세우기 (갈등 해결)", "과속 단속(옐로/레드카드)", "주차단속"] },
+      { name: "자치부", group: "4모둠", roles: ["개선제안 부서 배정", "갈등 진술서", "규칙 캠페인", ""] },
+      { name: "교육부", group: "5모둠", roles: ["다음 시간 책 확인", "수익 채점", "미니선생님", "학습지/가정통신문/책 나눠주기"] },
+      { name: "국방부", group: "6모둠", roles: ["문 닫기", "소음", "디벗함 관리", "전등"] },
+    ];
+
+    const DEFAULT_PENALTIES = [
+      { name: "과속", points: -3 },
+      { name: "신체 접촉", points: -3 },
+      { name: "언어폭력", points: -3 },
+      { name: "단속 거부", points: -5 },
+    ];
+
+    const DEFAULT_SHOP_GROUP = [
+      { name: "급식 하이패스권", cost: 10 }, { name: "음악 청소권", cost: 10 }, { name: "공책검사 면제", cost: 10 }, { name: "청소 면제", cost: 10 },
+    ];
+    const DEFAULT_SHOP_CLASS = [
+      { name: "아침활동 하루 없음", cost: 15 }, { name: "자유시간", cost: 15 }, { name: "점심시간 놀이터", cost: 15 }, { name: "시네마데이", cost: 15 },
+    ];
+
+    let state = loadState();
+    let autoSettleChecked = false;
+    let activeSheet = null;
+    const MAX_UNDO = 40;
+    let undoStack = [];
+
+    function cloneState(s) { return JSON.parse(JSON.stringify(s)); }
+    function pushUndo() {
+      undoStack.push(cloneState(state));
+      if (undoStack.length > MAX_UNDO) undoStack.shift();
+      updateUndoButton();
+    }
+    function updateUndoButton() {
+      const btn = document.getElementById("undoBtn");
+      if (btn) btn.disabled = undoStack.length === 0;
+    }
+    function undoAction() {
+      if (!undoStack.length) { showToast("되돌릴 작업이 없습니다"); return; }
+      state = undoStack.pop();
+      localStorage.setItem("classCivilizationGame", JSON.stringify(state));
+      updateUndoButton();
+      render();
+      showToast("마지막 작업을 되돌렸습니다");
+    }
+    function mutateState(mutator) {
+      pushUndo();
+      mutator();
+      localStorage.setItem("classCivilizationGame", JSON.stringify(state));
+      render();
+    }
+    function syncDeptMembers() {
+      state.departments.forEach((d, i) => {
+        d.members = state.students.filter(s => s.groupId === i).map(s => s.no);
+      });
+    }
+    function createStudentsArray(count) {
+      return Array.from({ length: count }, (_, i) => ({
+        no: i + 1,
+        name: `학생${i + 1}`,
+        score: 0,
+        groupId: Math.floor(i / 4) % DEFAULT_DEPTS.length,
+      }));
+    }
+    function defaultState() {
+      return {
+        stageIndex: 0, classScore: 0, lastSettleDate: null, creditSystem: false, classTax: 0,
+        civilizationLog: [], departmentDailyLog: [],
+        departments: DEFAULT_DEPTS.map((d, i) => ({
+          ...d, dailyScore: 0, roleChecks: [false, false, false, false], missionUsed: false, welfareUsed: false, members: [],
+        })),
+        students: createStudentsArray(24), penalties: DEFAULT_PENALTIES.map(p => ({ ...p })),
+        shopGroup: DEFAULT_SHOP_GROUP.map(s => ({ ...s })), shopClass: DEFAULT_SHOP_CLASS.map(s => ({ ...s })),
+      };
+    }
+    function migrateState(s) {
+      if (!s) return defaultState();
+      if (s.classScore === undefined) s.classScore = 0;
+      if (!s.departmentDailyLog) s.departmentDailyLog = [];
+      if (s.lastSettleDate === undefined) s.lastSettleDate = null;
+      if (!s.departments) s.departments = defaultState().departments;
+      s.departments.forEach((d, i) => {
+        if (d.dailyScore === undefined) d.dailyScore = d.score ?? 0;
+        delete d.score;
+        if (!d.roleChecks) d.roleChecks = [false, false, false, false];
+        if (d.missionUsed === undefined) d.missionUsed = false;
+        if (d.welfareUsed === undefined) d.welfareUsed = false;
+      });
+      return s;
+    }
+    function loadState() {
+      try {
+        const saved = localStorage.getItem("classCivilizationGame");
+        return saved ? migrateState(JSON.parse(saved)) : defaultState();
+      } catch { return defaultState(); }
+    }
+    function getTodayKey() { return new Date().toLocaleDateString("ko-KR"); }
+    function getUnlockScore() { return STAGES[state.stageIndex].unlock; }
+    function getTodayContribution() { return Math.floor(state.departments.reduce((sum, d) => sum + (d.dailyScore || 0), 0) * 0.2); }
+    function getGaugeScore() { return state.classScore + getTodayContribution(); }
+    function getRank(score) {
+      if (!state.creditSystem) {
+        if (score < 50) return "평민";
+        if (score < 120) return "양반";
+        return "관직";
+      }
+      if (score < 50) return "소비자";
+      if (score < 100) return "투자자";
+      return "재벌";
+    }
+    function showToast(msg) {
+      const t = document.getElementById("toast");
+      t.textContent = msg; t.classList.add("show");
+      setTimeout(() => t.classList.remove("show"), 2800);
+    }
+    function resizeStudents(newCount) {
+      if(newCount < 1) return;
+      mutateState(() => {
+        if(newCount > state.students.length) {
+          const diff = newCount - state.students.length;
+          const startNo = state.students.length + 1;
+          for(let i=0; i<diff; i++) {
+            state.students.push({ no: startNo + i, name: `학생${startNo + i}`, score: 0, groupId: Math.floor((startNo + i - 1) / 4) % state.departments.length });
+          }
+        } else if(newCount < state.students.length) {
+          state.students = state.students.slice(0, newCount);
+        }
+        syncDeptMembers();
+      });
+      showToast(`학생 수가 ${newCount}명으로 조정되었습니다.`);
+    }
+
+    function settleDay(options = {}) {
+      const { force = false, silent = false, settleForDate = null } = options;
+      const today = getTodayKey();
+      if (!force && state.lastSettleDate === today) { if (!silent) showToast("오늘은 이미 마감되었습니다."); return false; }
+      const recordDate = settleForDate || (force && state.lastSettleDate === today ? today + " (재마감)" : (state.lastSettleDate && state.lastSettleDate !== today ? state.lastSettleDate : today));
+      let dayTotal = 0;
+      state.departments.forEach((dept, i) => {
+        const score = dept.dailyScore || 0;
+        if (score > 0) {
+          state.departmentDailyLog.push({ date: recordDate, deptName: dept.name, group: dept.group, members: state.students.filter(s => s.groupId === i).length, score });
+          dayTotal += score;
+        }
+      });
+      const contribution = Math.floor(dayTotal * 0.2);
+      if (contribution > 0) {
+        state.classScore += contribution;
+        state.civilizationLog.push({ date: recordDate, type: "일일 정산", delta: "+" + contribution, total: state.classScore });
+      }
+      state.departments.forEach(dept => { dept.dailyScore = 0; dept.roleChecks = [false, false, false, false]; dept._bonusGiven = false; });
+      state.lastSettleDate = today;
+      localStorage.setItem("classCivilizationGame", JSON.stringify(state));
+      return true;
+    }
+
+    function checkAutoSettle() {
+      if (autoSettleChecked) return;
+      autoSettleChecked = true;
+      const today = getTodayKey();
+      if (!state.lastSettleDate) { state.lastSettleDate = today; localStorage.setItem("classCivilizationGame", JSON.stringify(state)); return; }
+      if (state.lastSettleDate !== today) {
+        const prevDate = state.lastSettleDate;
+        settleDay({ force: true, silent: true, settleForDate: prevDate });
+      }
+    }
+
+    function manualSettleDay() {
+      if (confirm("오늘 획득한 모둠 점수를 시트에 기록하고 마감할까요?")) {
+        pushUndo(); settleDay({ force: true }); render();
+      }
+    }
+
+    function render() {
+      checkAutoSettle();
+      const stage = STAGES[state.stageIndex];
+      document.getElementById("stageName").textContent = stage.name;
+      document.getElementById("stageDesc").textContent = stage.desc;
+      
+      // 자동 배경 이미지 변경 로직 구현
+      if (stage.bg && stage.bg !== "이곳에_인터넷_이미지_주소_입력" && stage.bg.trim() !== "") {
+        document.body.style.backgroundImage = `url('${stage.bg}')`;
+      } else {
+        document.body.style.backgroundImage = "none";
+        document.body.style.backgroundColor = "#121212";
+      }
+      
+      document.getElementById("stageInfoBox").innerHTML = `
+        <div class="stage-info-item"><strong>🎯 미션:</strong> ${escapeHtml(stage.mission)}</div>
+        <div class="stage-info-item"><strong>🎁 혜택:</strong> ${escapeHtml(stage.welfare)}</div>
+      `;
+
+      const current = getGaugeScore();
+      const unlock = getUnlockScore();
+      const pct = Math.min(100, Math.round((current / unlock) * 100));
+      const todayContrib = getTodayContribution();
+      document.getElementById("gaugeText").textContent = `${current} / ${unlock} (${pct}%)`;
+      document.getElementById("gaugeFill").style.width = pct + "%";
+      document.getElementById("gaugeMeta").textContent = `누적 학급 점수 ${state.classScore}점 + 오늘 기여 ${todayContrib}점 · 마지막 마감: ${state.lastSettleDate || "없음"}`;
+      const homeNextBtn = document.getElementById("homeNextStageBtn");
+      if(current >= unlock) {
+        homeNextBtn.disabled = false; homeNextBtn.textContent = "🚀 다음 단계로 진급 가능! (Unlock)";
+      } else {
+        homeNextBtn.disabled = true; homeNextBtn.textContent = `🔒 점수 부족 (${current}/${unlock}) 다음 단계 이동 불가`;
+      }
+      renderSheets(); renderDepartments(); updateUndoButton();
+    }
+
+    function renderDepartments() {
+      const grid = document.getElementById("deptGrid");
+      const stage = STAGES[state.stageIndex];
+      grid.innerHTML = state.departments.map((dept, di) => `
+        <div class="dept-card">
+          <div class="dept-header-row">
+            <span class="dept-badge"><input value="${escapeHtml(dept.name)}" onchange="updateDept(${di},'name',this.value)" /></span>
+            <span class="group-label">(<input value="${escapeHtml(dept.group)}" onchange="updateDept(${di},'group',this.value)" />)</span>
+            <span class="group-score">${dept.dailyScore || 0}점</span>
+            <div class="icon-btns">
+              <button class="icon-btn ${dept.missionUsed ? 'used' : ''}" title="${escapeHtml(stage.mission)}" onclick="useMission(${di})">🎯</button>
+              <button class="icon-btn ${dept.welfareUsed ? 'used' : ''}" title="${escapeHtml(stage.welfare)}" onclick="useWelfare(${di})">🎁</button>
+            </div>
+          </div>
+          <div class="role-list">
+            ${dept.roles.map((role, ri) => `
+              <div class="role-item">
+                <input type="checkbox" ${dept.roleChecks[ri] ? 'checked' : ''} onchange="toggleRole(${di},${ri},this.checked)" />
+                <input type="text" value="${escapeHtml(role)}" onchange="updateRole(${di},${ri},this.value)" />
+              </div>
+            `).join("")}
+          </div>
+          <div class="daily-input">
+            <label>오늘 점수(1~6):</label>
+            <input type="number" min="1" max="6" id="daily-${di}" />
+            <button class="btn" onclick="addDailyScore(${di})">추가</button>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    function escapeHtml(str) { return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+
+    function renderSheets() {
+      document.getElementById("sheetCivilization").innerHTML = `
+        <h3>문명 점수 기록</h3>
+        <div class="table-scroll-container">
+          <table>
+            <thead><tr><th>날짜</th><th>유형</th><th>+/-</th><th>현 점수</th></tr></thead>
+            <tbody>
+              ${state.civilizationLog.slice().reverse().map(l => `<tr><td>${l.date}</td><td>${l.type}</td><td>${l.delta}</td><td>${l.total}점</td></tr>`).join("") || '<tr><td colspan="4">기록 없음</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+      `;
+
+      document.getElementById("sheetDepartment").innerHTML = `
+        <h3>부서 점수 기록</h3>
+        <div class="table-scroll-container">
+          <table>
+            <thead><tr><th>날짜</th><th>부서</th><th>모둠</th><th>획득 점수</th></tr></thead>
+            <tbody>
+              ${state.departmentDailyLog.slice().reverse().map(r => `<tr><td>${r.date}</td><td>${r.deptName}</td><td>${r.group}</td><td>${r.score}점</td></tr>`).join("") || '<tr><td colspan="4">기록 없음</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+      `;
+
+      const rankLabel = state.creditSystem ? "신용등급제" : "신분제";
+      document.getElementById("sheetPersonal").innerHTML = `
+        <h3>개인 점수 (${rankLabel})</h3>
+        <div class="table-scroll-container">
+          <table>
+            <thead><tr><th>번호</th><th>이름</th><th>점수</th><th>등급</th><th>모둠</th></tr></thead>
+            <tbody>
+              ${state.students.map(s => {
+                const rank = getRank(s.score);
+                const groupOptions = state.departments.map((d, gi) => `<option value="${gi}" ${s.groupId === gi ? 'selected' : ''}>${escapeHtml(d.group)}</option>`).join("");
+                return `<tr>
+                  <td>${s.no}</td>
+                  <td><input value="${escapeHtml(s.name)}" style="border:none;text-align:center;width:70px; background:transparent; color:#fff;" onchange="updateStudent(${s.no},'name',this.value)" /></td>
+                  <td><input type="number" value="${s.score}" style="width:60px;text-align:center; background:#222; color:#fff; border:1px solid #444;" onchange="updateStudent(${s.no},'score',+this.value)" /></td>
+                  <td><span class="rank-badge rank-${rank}">${rank}</span></td>
+                  <td><select onchange="updateStudentGroup(${s.no}, +this.value)" style="padding:4px 8px;border-radius:8px;border:1px solid #444; background:#222; color:#fff;">${groupOptions}</select></td>
+                </tr>`;
+              }).join("")}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    function switchSheet(name) {
+      if (activeSheet === name) activeSheet = null; else activeSheet = name;
+      document.querySelectorAll(".sheet-tab").forEach(t => t.classList.toggle("active", t.dataset.sheet === activeSheet));
+      document.getElementById("sheetCivilization").classList.toggle("open", activeSheet === "civilization");
+      document.getElementById("sheetDepartment").classList.toggle("open", activeSheet === "department");
+      document.getElementById("sheetPersonal").classList.toggle("open", activeSheet === "personal");
+    }
+
+    function updateDept(di, field, val) { mutateState(() => { state.departments[di][field] = val; }); }
+    function setStageFromSettings(idx) { mutateState(() => { state.stageIndex = idx; }); showToast(`${STAGES[idx].name}로 단계를 이동했습니다.`); closeModal(); }
+    function updateRole(di, ri, val) { mutateState(() => { state.departments[di].roles[ri] = val; }); }
+    function updateStudent(no, field, val) { mutateState(() => { const s = state.students.find(x => x.no === no); if (s) s[field] = val; }); }
+    function updateStudentGroup(no, groupId) { mutateState(() => { const s = state.students.find(x => x.no === no); if (s) { s.groupId = groupId; syncDeptMembers(); } }); }
+
+    function toggleRole(di, ri, checked) {
+      mutateState(() => {
+        state.departments[di].roleChecks[ri] = checked;
+        const dept = state.departments[di];
+        const allChecked = dept.roleChecks.every(Boolean);
+        if (allChecked && !dept._bonusGiven) { dept.dailyScore = (dept.dailyScore || 0) + 2; dept._bonusGiven = true; }
+        else if (!allChecked && dept._bonusGiven) { dept.dailyScore = Math.max(0, (dept.dailyScore || 0) - 2); dept._bonusGiven = false; }
+      });
+    }
+
+    function addDailyScore(di) {
+      const input = document.getElementById(`daily-${di}`); const val = +input.value;
+      if (val < 1 || val > 6) { showToast("1~6점만 입력 가능합니다"); return; }
+      mutateState(() => { state.departments[di].dailyScore = (state.departments[di].dailyScore || 0) + val; });
+      input.value = ""; showToast(`+${val}점 추가`);
+    }
+    function useMission(di) { mutateState(() => { state.departments[di].missionUsed = !state.departments[di].missionUsed; }); }
+    function useWelfare(di) { mutateState(() => { state.departments[di].welfareUsed = !state.departments[di].welfareUsed; }); }
+
+    function collectTax() {
+      const hasAny = state.departments.some(d => (d.dailyScore || 0) > 0);
+      if (!hasAny) { showToast("징수할 모둠 점수가 없습니다"); return; }
+      pushUndo();
+      let totalTax = 0;
+      state.departments.forEach((dept, di) => {
+        if ((dept.dailyScore || 0) <= 0) return;
+        const incomeTax = Math.floor(dept.dailyScore * 0.2);
+        const remainder = dept.dailyScore - incomeTax;
+        dept.dailyScore = 0; totalTax += incomeTax;
+        const members = state.students.filter(s => s.groupId === di);
+        if (members.length > 0 && remainder > 0) {
+          const each = Math.floor(remainder / members.length); const extra = remainder % members.length;
+          members.forEach((s, idx) => { s.score += each + (idx < extra ? 1 : 0); });
+        }
+      });
+      state.classTax += totalTax; localStorage.setItem("classCivilizationGame", JSON.stringify(state)); render(); showToast(`세금 징수 완료!`);
+    }
+
+    function applyPenalty(penaltyIdx, studentNo) {
+      const p = state.penalties[penaltyIdx]; const s = state.students.find(x => x.no === studentNo);
+      if (!s || !p) return;
+      pushUndo(); s.score += p.points; localStorage.setItem("classCivilizationGame", JSON.stringify(state)); render(); showToast(`${s.name} 벌점 부과`); closeModal();
+    }
+
+    function tryUnlock() {
+      const current = getGaugeScore(); const unlock = getUnlockScore();
+      if (current < unlock) { showToast("Unlock 점수를 다 채우지 못했습니다!"); return; }
+      const wasStage4 = state.stageIndex === 4;
+      mutateState(() => {
+        if (wasStage4) {
+          state.students.forEach(s => {
+            const r = getRank(s.score);
+            if (r === "평민") s.score = 0; else if (r === "양반") s.score = 10; else if (r === "관직") s.score = 20;
+          });
+          state.creditSystem = true; alert("신분제가 철폐되고 신용등급제 시스템으로 전환됩니다.");
+        }
+        if (state.stageIndex < STAGES.length - 1) { state.stageIndex++; }
+      });
+    }
+
+    function exportToExcel() {
+      const currentStageName = STAGES[state.stageIndex].name;
+      let s1 = `<tr><th colspan="2">학급 및 문명개요</th></tr>`;
+      s1 += `<tr><td>구분</td><td>값</td></tr>`;
+      s1 += `<tr><td>현재 단계</td><td>${currentStageName}</td></tr>`;
+      s1 += `<tr><td>현재 학급 점수 (홈화면 기준)</td><td>${getGaugeScore()}점 (누적 ${state.classScore} + 금일 기여 ${getTodayContribution()})</td></tr>`;
+      s1 += `<tr><td>학급 세금 풀</td><td>${state.classTax}점</td></tr>`;
+      s1 += `<tr><td>마지막 마감일</td><td>${state.lastSettleDate || '없음'}</td></tr>`;
+
+      let s2 = `<tr><th colspan="3">부서 모둠 데이터 (실시간)</th></tr>`;
+      s2 += `<tr><td>부서명</td><td>모둠명</td><td>오늘 획득 점수 (모둠점수)</td></tr>`;
+      state.departments.forEach(d => { 
+        s2 += `<tr><td>${d.name}</td><td>${d.group}</td><td>${d.dailyScore || 0}점</td></tr>`; 
+      });
+
+      let s3 = `<tr><th colspan="5">개인 학생 점수</th></tr>`;
+      s3 += `<tr><td>번호</td><td>이름</td><td>개인 점수</td><td>등급/신분</td><td>소속 모둠</td></tr>`;
+      state.students.forEach(s => {
+        const d = state.departments[s.groupId] ? state.departments[s.groupId].group : "미지정";
+        s3 += `<tr><td>${s.no}</td><td>${s.name}</td><td>${s.score}점</td><td>${getRank(s.score)}</td><td>${d}</td></tr>`;
+      });
+
+      const excelTemplate = `
+        <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+        <head><meta charset="UTF-8"></head>
+        <body><table id="sheet1" border="1">${s1}</table><br/><table id="sheet2" border="1">${s2}</table><br/><table id="sheet3" border="1">${s3}</table></body></html>`;
+
+      const blob = new Blob([excelTemplate], { type: "application/vnd.ms-excel;charset=utf-8;" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `학급_문명_게임_백업_데이터.xls`;
+      a.click();
+      showToast("현재 데이터가 모두 반영된 엑셀 파일이 생성되었습니다.");
+    }
+
+    function generateBackupCode() {
+      const codeStr = btoa(encodeURIComponent(JSON.stringify(state)));
+      const txt = document.getElementById("backupCodeArea");
+      if(txt) {
+        txt.value = codeStr;
+        txt.select();
+        showToast("백업 텍스트가 생성되고 선택되었습니다.");
+      }
+    }
+
+    function importBackupCode() {
+      const codeStr = document.getElementById("importCodeArea").value.trim();
+      if (!codeStr) { alert("가져올 백업 텍스트 코드를 입력해 주세요."); return; }
+      try {
+        const parsedState = JSON.parse(decodeURIComponent(atob(codeStr)));
+        if (parsedState && typeof parsedState === 'object' && parsedState.students) {
+          if (confirm("백업 데이터를 프로그램에 올려 반영하시겠습니까? (기존 데이터 덮어쓰기)")) {
+            pushUndo();
+            state = migrateState(parsedState);
+            syncDeptMembers();
+            localStorage.setItem("classCivilizationGame", JSON.stringify(state));
+            render();
+            showToast("성공적으로 데이터를 가져왔습니다!");
+            closeModal();
+          }
+        } else { alert("유효하지 않은 데이터 구조입니다."); }
+      } catch (e) { alert("백업 코드를 해석하는 도중 오류가 발생했습니다."); }
+    }
+
+    function openModal(type) {
+      const m = document.getElementById("modalBackdrop");
+      const c = document.getElementById("modalContent");
+      m.classList.add("open");
+
+      if (type === 'penalty') {
+        c.innerHTML = `
+          <button class="modal-close" onclick="closeModal()">닫기</button>
+          <h2>벌점 부과</h2>
+          <table>
+            <thead><tr><th>항목</th><th>점수</th><th>대상 선택</th></tr></thead>
+            <tbody>
+              ${state.penalties.map((p, pi) => `
+                <tr>
+                  <td><strong>${p.name}</strong></td>
+                  <td style="color:var(--danger)">${p.points}점</td>
+                  <td>
+                    <select onchange="if(this.value) applyPenalty(${pi}, +this.value)">
+                      <option value="">-- 학생 선택 --</option>
+                      ${state.students.map(s => `<option value="${s.no}">${s.no}번 ${escapeHtml(s.name)}</option>`).join("")}
+                    </select>
+                  </td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        `;
+      } else if (type === 'shop') {
+        c.innerHTML = `
+          <button class="modal-close" onclick="closeModal()">닫기</button>
+          <h2>문명 매점</h2>
+          <p style="color:#aaa;">하루 마감 전 획득하거나 적립해 둔 포인트로 상품을 교환하세요.</p>
+        `;
+      } else if (type === 'settings') {
+        c.innerHTML = `
+          <button class="modal-close" onclick="closeModal()">닫기</button>
+          <h2>게임 마스터 설정</h2>
+          
+          <div class="setting-section">
+            <h3>📍 시작 단계 자유 이동</h3>
+            <div class="stage-select-grid">
+              ${STAGES.map((st, idx) => `<button class="btn-stage-pick ${state.stageIndex === idx ? 'current' : ''}" onclick="setStageFromSettings(${idx})">${st.name}</button>`).join("")}
+            </div>
+          </div>
+
+          <div class="setting-section">
+            <h3>👥 학생 인원 수 조절 및 관리</h3>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <label>현재 학생 수:</label>
+              <input type="number" id="inputStudentCount" value="${state.students.length}" min="1" max="100" style="width:70px; padding:6px; border-radius:6px; border:1px solid #444; background:#111; color:#fff;" />
+              <button class="btn btn-primary" onclick="resizeStudents(+document.getElementById('inputStudentCount').value)">인원수 반영하기</button>
+            </div>
+          </div>
+
+          <div class="setting-section">
+            <h3>📥 데이터 가져오기 (프로그램에 올려 반영)</h3>
+            <textarea id="importCodeArea" placeholder="이곳에 내보내기/백업했던 텍스트 코드를 붙여넣으세요."></textarea>
+            <button class="btn btn-primary" onclick="importBackupCode()" style="margin-top:6px; width:100%;">⚡ 데이터 올려서 반영하기</button>
+          </div>
+
+          <div class="setting-section">
+            <h3>📤 데이터 내보내기 및 텍스트 백업</h3>
+            <button class="btn" onclick="generateBackupCode()">텍스트 백업 코드 생성</button>
+            <textarea id="backupCodeArea" readonly placeholder="코드가 생성되면 이곳에 표시됩니다."></textarea>
+          </div>
+
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px; padding-top:16px; border-top:1px solid #444;">
+            <button class="btn btn-settle" onclick="exportToExcel()">📊 실데이터 반영 엑셀 백업 (.xls)</button>
+            <button class="btn btn-danger" onclick="if(confirm('모든 데이터를 초기화하시겠습니까?')){pushUndo(); localStorage.removeItem('classCivilizationGame'); state=defaultState(); syncDeptMembers(); render(); closeModal();}">💥 데이터 초기화 (Reset)</button>
+          </div>
+        `;
+      }
+    }
+
+    function closeModal() { document.getElementById("modalBackdrop").classList.remove("open"); }
+    window.onload = () => { syncDeptMembers(); render(); };
+  </script>
+</body>
+</html>
