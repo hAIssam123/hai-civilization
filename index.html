@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>학급 문명 게임</title>
@@ -779,7 +780,7 @@
     function importFromExcelFile() {
   const fileInput = document.getElementById('excelFileInput');
   if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
-    alert("올릴 엑셀 파일(.xls)을 선택해 주세요.");
+    alert("올릴 엑셀 파일을 선택해 주세요.");
     return;
   }
 
@@ -788,35 +789,30 @@
 
   reader.onload = function(e) {
     try {
-      const content = e.target.result;
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(content, "text/html");
-      const tables = doc.querySelectorAll("table");
+      const data = new Uint8Array(e.target.result);
+      // 어떤 엑셀 파일(.xlsx, .xls)이든 시트로 변환
+      const workbook = XLSX.read(data, { type: 'array' });
 
-      // 테이블이 전혀 없다면 오류
-      if (tables.length === 0) {
-        alert("올바른 학급 문명 게임 백업 엑셀 파일이 아닙니다. (표 데이터 없음)");
-        return;
-      }
+      // 보통 개인 데이터가 들어있는 마지막 시트(또는 첫 번째 시트) 선택
+      const sheetName = workbook.SheetNames[workbook.SheetNames.length - 1];
+      const worksheet = workbook.Sheets[sheetName];
+      const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
       pushUndo();
-
-      // 개인 점수가 들어있는 테이블(보통 마지막 표 또는 3번째 표) 지정
-      const studentTable = tables[tables.length - 1];
-      const studentRows = studentTable.querySelectorAll("tbody tr, tr");
       let updatedCount = 0;
 
-      studentRows.forEach((row) => {
-        const cols = row.querySelectorAll("td");
-        if (cols.length >= 3) {
-          const no = parseInt(cols[0].textContent.trim());
-          const name = cols[1].textContent.trim();
-          const score = parseInt(cols[2].textContent.replace("점", "").trim());
+      // 행별 데이터 읽기 (1열: 번호, 2열: 이름, 3열: 점수)
+      json.forEach(row => {
+        if (row && row.length >= 3) {
+          const no = parseInt(row[0]);
+          const name = String(row[1] || '').trim();
+          const rawScore = String(row[2] || '').replace("점", "").trim();
+          const score = parseInt(rawScore);
 
           if (!isNaN(no)) {
             const student = state.students.find(s => s.no === no);
             if (student) {
-              student.name = name;
+              if (name) student.name = name;
               if (!isNaN(score)) student.score = score;
               updatedCount++;
             }
@@ -825,20 +821,21 @@
       });
 
       if (updatedCount === 0) {
-        alert("엑셀에서 읽어올 수 있는 학생 데이터가 없습니다.");
+        alert("엑셀에서 학생 데이터를 읽지 못했습니다. 번호/이름/점수 컬럼 위치를 확인해 주세요.");
         return;
       }
 
       localStorage.setItem("classCivilizationGame", JSON.stringify(state));
       render();
-      showToast(`${updatedCount}명의 학생 데이터를 엑셀에서 성공적으로 불러왔습니다!`);
+      showToast(`${updatedCount}명의 학생 데이터를 성공적으로 불러왔습니다!`);
       closeModal();
     } catch (err) {
-      alert("엑셀 파일을 읽는 도중 오류가 발생했습니다.");
+      alert("엑셀 파일을 읽는 도중 오류가 발생했습니다: " + err.message);
     }
   };
 
-  reader.readAsText(file, "UTF-8");
+  // 텍스트가 아닌 바이너리 배열로 파일을 읽음
+  reader.readAsArrayBuffer(file);
 }
 
   </script>
