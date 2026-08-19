@@ -720,11 +720,37 @@
             </tbody>
           </table>
         `;
-      } else if (type === 'shop') {
+} else if (type === 'shop') {
         c.innerHTML = `
           <button class="modal-close" onclick="closeModal()">닫기</button>
           <h2>문명 매점</h2>
-          <p style="color:#aaa;">포인트로 상품을 교환하세요.</p>
+          <p style="color:#aaa; margin-bottom: 15px;">포인트로 상품을 확인하세요.</p>
+          
+          <h3 style="margin-bottom: 8px; color: #f1c40f; font-size: 1.1rem;">📦 모둠 상품</h3>
+          <table style="margin-bottom: 20px;">
+            <thead><tr><th>상품명</th><th>비용</th></tr></thead>
+            <tbody>
+              ${state.shopGroup.map(item => `
+                <tr>
+                  <td>${escapeHtml(item.name)}</td>
+                  <td>${item.cost}점</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+
+          <h3 style="margin-bottom: 8px; color: #f1c40f; font-size: 1.1rem;">🏫 학급 상품</h3>
+          <table>
+            <thead><tr><th>상품명</th><th>비용</th></tr></thead>
+            <tbody>
+              ${state.shopClass.map(item => `
+                <tr>
+                  <td>${escapeHtml(item.name)}</td>
+                  <td>${item.cost}점</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
         `;
       } else if (type === 'settings') {
         c.innerHTML = `
