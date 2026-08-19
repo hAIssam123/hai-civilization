@@ -7,7 +7,7 @@
   <title>학급 문명 게임</title>
   <style>
     :root {
-      --card: rgba(25, 25, 25, 0.85); /* 배경이 보이기 위해 투명도 소폭 조절 */
+      --card: rgba(25, 25, 25, 0.85);
       --text-main: #ffffff;
       --text-sub: #cccccc;
       --accent: #f1c40f;
@@ -15,7 +15,6 @@
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     
-    /* 배경 이미지가 자연스럽게 바뀌도록 body 스타일 수정 */
     body {
       font-family: "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
       min-height: 100vh;
@@ -24,11 +23,10 @@
       background-size: cover;
       background-position: center;
       background-attachment: fixed;
-      transition: background-image 0.5s ease-in-out; /* 배경 전환 효과 */
+      transition: background-image 0.5s ease-in-out;
     }
     .app { min-height: 100vh; }
     
-    /* 배경이 너무 밝아 글씨가 안 보이는 것을 방지하는 어두운 필터 적용 */
     .overlay { 
       min-height: 100vh; 
       padding: 16px; 
@@ -272,7 +270,6 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    // 각 시대 객체에 bg 주소 추가 (여기에 웹 이미지 주소를 넣어주세요)
     const STAGES = [
       { name: "1. 선사 시대", desc: "생존을 위해 소통하고 뭉쳐라!", mission: "부족민 정찰대 (우리 반 친구 모두와 대화 나누기)", welfare: "동굴 대피권 (오늘 하루는 쉬고 싶소!) 발표 면제권", unlock: 100, bg: "https://lh3.googleusercontent.com/d/1zLe4VRKAX4TjWcaEzwhXDLFDUzSOgSSb" },
       { name: "2. 농경 시대", desc: "정착 생활을 시작하며 협동하고 성실하게 일하라!", mission: "품앗이 (점심 시간 전 자기 자리 청소 완벽히 하기 10회)", welfare: "새참 타임 (과자파티)", unlock: 100, bg: "https://lh3.googleusercontent.com/d/19T_S5rLVy-qyTsrtwjhe-K8Fx3zBKO1f" },
@@ -286,12 +283,12 @@
     ];
 
     const DEFAULT_DEPTS = [
-      { name: "복지부", group: "1모둠", roles: ["우유", "급식 알리미", "쉬는시간 이벤트 기획", "보드게임 정리 단속"] },
-      { name: "환경부", group: "2모둠", roles: ["교실 앞뒤 쓸기", "사물함/서랍 체크", "교실 꾸미기", "분리수거"] },
-      { name: "교통부", group: "3모둠", roles: ["심부름", "줄세우기 (갈등 해결)", "과속 단속(옐로/레드카드)", "주차단속"] },
-      { name: "자치부", group: "4모둠", roles: ["개선제안 부서 배정", "갈등 진술서", "규칙 캠페인", ""] },
-      { name: "교육부", group: "5모둠", roles: ["다음 시간 책 확인", "수익 채점", "미니선생님", "학습지/가정통신문/책 나눠주기"] },
-      { name: "국방부", group: "6모둠", roles: ["문 닫기", "소음", "디벗함 관리", "전등"] },
+      { id: 1, name: "복지부", group: "1모둠", roles: ["우유", "급식 알리미", "쉬는시간 이벤트 기획", "보드게임 정리 단속"] },
+      { id: 2, name: "환경부", group: "2모둠", roles: ["교실 앞뒤 쓸기", "사물함/서랍 체크", "교실 꾸미기", "분리수거"] },
+      { id: 3, name: "교통부", group: "3모둠", roles: ["심부름", "줄세우기 (갈등 해결)", "과속 단속(옐로/레드카드)", "주차단속"] },
+      { id: 4, name: "자치부", group: "4모둠", roles: ["개선제안 부서 배정", "갈등 진술서", "규칙 캠페인", ""] },
+      { id: 5, name: "교육부", group: "5모둠", roles: ["다음 시간 책 확인", "수익 채점", "미니선생님", "학습지/가정통신문/책 나눠주기"] },
+      { id: 6, name: "국방부", group: "6모둠", roles: ["문 닫기", "소음", "디벗함 관리", "전등"] },
     ];
 
     const DEFAULT_PENALTIES = [
@@ -355,9 +352,7 @@
       return {
         stageIndex: 0, classScore: 0, lastSettleDate: null, creditSystem: false, classTax: 0,
         civilizationLog: [], departmentDailyLog: [],
-        civilizations: [
-          { id: 1, name: "문", score: 0 }],
-        departments: DEFAULT_DEPTS.map((d, i) => ({
+        departments: DEFAULT_DEPTS.map((d) => ({
           ...d, dailyScore: 0, roleChecks: [false, false, false, false], missionUsed: false, welfareUsed: false, members: [],
         })),
         students: createStudentsArray(24), penalties: DEFAULT_PENALTIES.map(p => ({ ...p })),
@@ -369,11 +364,10 @@
       if (s.classScore === undefined) s.classScore = 0;
       if (!s.departmentDailyLog) s.departmentDailyLog = [];
       if (s.lastSettleDate === undefined) s.lastSettleDate = null;
-      if (!s.civilizations) {
-        s.civilizations = [
-          { id: 1, name: "문명", score: 0 }];
+      if (s.civilizations) delete s.civilizations;
       if (!s.departments) s.departments = defaultState().departments;
       s.departments.forEach((d, i) => {
+        if (!d.id) d.id = i + 1;
         if (d.dailyScore === undefined) d.dailyScore = d.score ?? 0;
         delete d.score;
         if (!d.roleChecks) d.roleChecks = [false, false, false, false];
@@ -471,7 +465,6 @@
       document.getElementById("stageName").textContent = stage.name;
       document.getElementById("stageDesc").textContent = stage.desc;
       
-      // 자동 배경 이미지 변경 로직 구현
       if (stage.bg && stage.bg !== "이곳에_인터넷_이미지_주소_입력" && stage.bg.trim() !== "") {
         document.body.style.backgroundImage = `url('${stage.bg}')`;
       } else {
@@ -701,14 +694,11 @@
       }
     }
 
-
-
     function openModal(type) {
       const m = document.getElementById("modalBackdrop");
       const c = document.getElementById("modalContent");
       m.classList.add("open");
 
-      
       if (type === 'penalty') {
         c.innerHTML = `
           <button class="modal-close" onclick="closeModal()">닫기</button>
@@ -747,19 +737,23 @@
               ${STAGES.map((st, idx) => `<button class="btn-stage-pick ${state.stageIndex === idx ? 'current' : ''}" onclick="setStageFromSettings(${idx})">${st.name}</button>`).join("")}
             </div>
           </div>
-<div class="setting-section">
-  <h3>📊 부서 점수 수정</h3>
-  <div id="deptScoreInputs" style="display: flex; flex-direction: column; gap: 8px;"></div>
-</div>
 
-<div class="setting-section" style="margin-top: 15px;">
-  <h3>🏛️ 문명 점수 수정</h3>
-  <div id="civScoreInputs" style="display: flex; flex-direction: column; gap: 8px;"></div>
-</div>
+          <div class="setting-section">
+            <h3>🏛️ 전체 학급 문명 점수 수정</h3>
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px;">
+              <span style="font-weight: bold;">누적 학급 문명 점수</span>
+              <input type="number" id="manual_class_score" value="${state.classScore || 0}" style="width: 120px; padding: 6px; text-align: right; background:#111; color:#fff; border:1px solid #444; border-radius:4px;" />
+            </div>
+          </div>
 
-<button class="btn btn-primary" onclick="saveManualScores()" style="margin-top: 15px; width: 100%;">
-  💾 변경된 점수 저장하기
-</button>
+          <div class="setting-section">
+            <h3>📊 부서 점수 수정</h3>
+            <div id="deptScoreInputs" style="display: flex; flex-direction: column; gap: 8px;"></div>
+          </div>
+
+          <button class="btn btn-primary" onclick="saveManualScores()" style="margin-top: 15px; width: 100%;">
+            💾 변경된 점수 저장하기
+          </button>
 
           <div class="setting-section">
             <h3>👥 학생 인원 수 조절 및 관리</h3>
@@ -770,11 +764,11 @@
             </div>
           </div>
 
-        <div class="setting-section">
-  <h3>📊 데이터 가져오기 (.xls)</h3>
-  <input type="file" id="excelFileInput" accept=".xls,.html" style="margin-bottom:8px; color:#fff;" />
-  <button class="btn btn-primary" onclick="importFromExcelFile()" style="width:100%;">📊 엑셀 파일 올려서 반영하기</button>
-</div>
+          <div class="setting-section">
+            <h3>📊 데이터 가져오기 (.xls)</h3>
+            <input type="file" id="excelFileInput" accept=".xls,.html" style="margin-bottom:8px; color:#fff;" />
+            <button class="btn btn-primary" onclick="importFromExcelFile()" style="width:100%;">📊 엑셀 파일 올려서 반영하기</button>
+          </div>
 
           <div class="setting-section">
             <h3>📤 데이터 내보내기 및 텍스트 백업</h3>
@@ -787,152 +781,116 @@
             <button class="btn btn-danger" onclick="if(confirm('모든 데이터를 초기화하시겠습니까?')){pushUndo(); localStorage.removeItem('classCivilizationGame'); state=defaultState(); syncDeptMembers(); render(); closeModal();}">💥 데이터 초기화 (Reset)</button>
           </div>
         `;
-      }
 
-      if (modalId === 'settings') {
-  const deptContainer = document.getElementById("deptScoreInputs");
-  if (deptContainer) {
-    deptContainer.innerHTML = state.departments.map(dept => `
-      <div style="display: flex; align-items: center; justify-content: space-between;">
-        <span style="font-weight: bold;">${dept.name}</span>
-        <input type="number" id="manual_dept_${dept.id}" value="${dept.score || 0}" style="width: 100px; padding: 4px; text-align: right;" />
-      </div>
-    `).join('');
-  }
-  const civContainer = document.getElementById("civScoreInputs");
-  if (civContainer) {
-    civContainer.innerHTML = (state.civilizations || []).map(civ => `
-      <div style="display: flex; align-items: center; justify-content: space-between;">
-        <span style="font-weight: bold;">${civ.name}</span>
-        <input type="number" id="manual_civ_${civ.id}" value="${civ.score || 0}" style="width: 100px; padding: 4px; text-align: right;" />
-      </div>
-    `).join('');
-  }
-}
+        const deptContainer = document.getElementById("deptScoreInputs");
+        if (deptContainer) {
+          deptContainer.innerHTML = state.departments.map(dept => `
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <span style="font-weight: bold;">${escapeHtml(dept.name)}</span>
+              <input type="number" id="manual_dept_${dept.id}" value="${dept.dailyScore || 0}" style="width: 100px; padding: 4px; text-align: right; background:#111; color:#fff; border:1px solid #444; border-radius:4px;" />
+            </div>
+          `).join('');
+        }
+      }
     }
 
     function closeModal() { document.getElementById("modalBackdrop").classList.remove("open"); }
     window.onload = () => { syncDeptMembers(); render(); };
 
-  function importFromExcelFile() {
-  const fileInput = document.getElementById('excelFileInput');
-  if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
-    alert("올릴 엑셀 파일을 선택해 주세요.");
-    return;
-  }
-
-  const file = fileInput.files[0];
-  const reader = new FileReader();
-
-  reader.onload = function(e) {
-    try {
-      const data = new Uint8Array(e.target.result);
-      const workbook = XLSX.read(data, { type: 'array' });
-
-      pushUndo();
-
-      let updatedStudents = 0;
-      let updatedDepts = 0;
-      let updatedCivs = 0;
-
-      // 엑셀 내 모든 시트를 순회하며 점수 탐색
-      workbook.SheetNames.forEach(sheetName => {
-        const worksheet = workbook.Sheets[sheetName];
-        const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-
-        json.forEach(row => {
-          if (!row || row.length === 0) return;
-
-          const col0 = String(row[0] || '').trim();
-          const col1 = String(row[1] || '').trim();
-          const col2 = String(row[2] || '').trim();
-
-          // 1. 문명(국가) 점수 반영 (문명 이름 일치 시)
-          if (state.civilizations) {
-            const civ = state.civilizations.find(c => c.name === col0);
-            if (civ && row.length >= 2) {
-              const score = parseInt(col1.replace("점", "").trim());
-              if (!isNaN(score)) {
-                civ.score = score;
-                updatedCivs++;
-                return;
-              }
-            }
-          }
-
-          // 2. 모둠(부서) 점수 반영 (모둠 이름 일치 시)
-          const dept = state.departments.find(d => d.name === col0);
-          if (dept && row.length >= 2) {
-            const score = parseInt(col1.replace("점", "").trim());
-            if (!isNaN(score)) {
-              dept.score = score;
-              updatedDepts++;
-              return;
-            }
-          }
-
-          // 3. 학생 개인 점수 반영 (1열이 번호인 경우)
-          const no = parseInt(col0);
-          if (!isNaN(no) && row.length >= 3) {
-            const student = state.students.find(s => s.no === no);
-            if (student) {
-              const name = col1;
-              const score = parseInt(col2.replace("점", "").trim());
-              if (name) student.name = name;
-              if (!isNaN(score)) student.score = score;
-              updatedStudents++;
-            }
-          }
-        });
-      });
-
-      if (updatedStudents === 0 && updatedDepts === 0 && updatedCivs === 0) {
-        alert("엑셀 파일에서 반영 가능한 데이터(학생/모둠/문명)를 찾지 못했습니다.");
+    function importFromExcelFile() {
+      const fileInput = document.getElementById('excelFileInput');
+      if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+        alert("올릴 엑셀 파일을 선택해 주세요.");
         return;
       }
 
-      localStorage.setItem("classCivilizationGame", JSON.stringify(state));
-      render();
-      showToast(`성공적으로 복원되었습니다! (학생 ${updatedStudents}명, 모둠 ${updatedDepts}개, 문명 ${updatedCivs}개)`);
-      closeModal();
-    } catch (err) {
-      alert("엑셀 파일을 읽는 도중 오류가 발생했습니다: " + err.message);
-    }
-  };
+      const file = fileInput.files[0];
+      const reader = new FileReader();
 
-  reader.readAsArrayBuffer(file);
-}
+      reader.onload = function(e) {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+
+          pushUndo();
+
+          let updatedStudents = 0;
+          let updatedDepts = 0;
+
+          workbook.SheetNames.forEach(sheetName => {
+            const worksheet = workbook.Sheets[sheetName];
+            const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+            json.forEach(row => {
+              if (!row || row.length === 0) return;
+
+              const col0 = String(row[0] || '').trim();
+              const col1 = String(row[1] || '').trim();
+              const col2 = String(row[2] || '').trim();
+
+              const dept = state.departments.find(d => d.name === col0);
+              if (dept && row.length >= 2) {
+                const score = parseInt(col1.replace("점", "").trim());
+                if (!isNaN(score)) {
+                  dept.dailyScore = score;
+                  updatedDepts++;
+                  return;
+                }
+              }
+
+              const no = parseInt(col0);
+              if (!isNaN(no) && row.length >= 3) {
+                const student = state.students.find(s => s.no === no);
+                if (student) {
+                  const name = col1;
+                  const score = parseInt(col2.replace("점", "").trim());
+                  if (name) student.name = name;
+                  if (!isNaN(score)) student.score = score;
+                  updatedStudents++;
+                }
+              }
+            });
+          });
+
+          if (updatedStudents === 0 && updatedDepts === 0) {
+            alert("엑셀 파일에서 반영 가능한 데이터(학생/모둠)를 찾지 못했습니다.");
+            return;
+          }
+
+          localStorage.setItem("classCivilizationGame", JSON.stringify(state));
+          render();
+          showToast(`성공적으로 복원되었습니다! (학생 ${updatedStudents}명, 모둠 ${updatedDepts}개)`);
+          closeModal();
+        } catch (err) {
+          alert("엑셀 파일을 읽는 도중 오류가 발생했습니다: " + err.message);
+        }
+      };
+
+      reader.readAsArrayBuffer(file);
+    }
 
     function saveManualScores() {
-  pushUndo(); // 되돌리기용 상태 저장
+      pushUndo();
 
-  // 1. 모둠(부서) 점수 반영
-  state.departments.forEach(dept => {
-    const input = document.getElementById(`manual_dept_${dept.id}`);
-    if (input) {
-      const val = parseInt(input.value);
-      dept.score = isNaN(val) ? 0 : val;
-    }
-  });
-
-  // 2. 문명 점수 반영
-  if (state.civilizations) {
-    state.civilizations.forEach(civ => {
-      const input = document.getElementById(`manual_civ_${civ.id}`);
-      if (input) {
-        const val = parseInt(input.value);
-        civ.score = isNaN(val) ? 0 : val;
+      const classScoreInput = document.getElementById("manual_class_score");
+      if (classScoreInput) {
+        const val = parseInt(classScoreInput.value);
+        state.classScore = isNaN(val) ? 0 : val;
       }
-    });
-  }
 
-  // 데이터 저장 및 화면 갱신
-  localStorage.setItem("classCivilizationGame", JSON.stringify(state));
-  render();
-  showToast("모둠 및 문명 점수가 성공적으로 수정되었습니다!");
-  closeModal();
-}
+      state.departments.forEach(dept => {
+        const input = document.getElementById(`manual_dept_${dept.id}`);
+        if (input) {
+          const val = parseInt(input.value);
+          dept.dailyScore = isNaN(val) ? 0 : val;
+        }
+      });
 
+      localStorage.setItem("classCivilizationGame", JSON.stringify(state));
+      render();
+      showToast("학급 문명 점수 및 모둠 점수가 수정되었습니다!");
+      closeModal();
+    }
   </script>
 </body>
 </html>
