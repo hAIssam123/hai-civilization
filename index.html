@@ -703,9 +703,7 @@
       const c = document.getElementById("modalContent");
       m.classList.add("open");
 
-      // 설정 모달 열 때 실행되는 부분에 추가
 if (modalId === 'settings') {
-  // 1. 부서(모둠) 점수 Input 생성
   const deptContainer = document.getElementById("deptScoreInputs");
   if (deptContainer) {
     deptContainer.innerHTML = state.departments.map(dept => `
@@ -715,8 +713,6 @@ if (modalId === 'settings') {
       </div>
     `).join('');
   }
-
-  // 2. 문명 점수 Input 생성
   const civContainer = document.getElementById("civScoreInputs");
   if (civContainer) {
     civContainer.innerHTML = (state.civilizations || []).map(civ => `
@@ -727,7 +723,6 @@ if (modalId === 'settings') {
     `).join('');
   }
 }
-
       
       if (type === 'penalty') {
         c.innerHTML = `
