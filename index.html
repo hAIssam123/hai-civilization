@@ -777,7 +777,7 @@
     function closeModal() { document.getElementById("modalBackdrop").classList.remove("open"); }
     window.onload = () => { syncDeptMembers(); render(); };
 
-    function importFromExcelFile() {
+  function importFromExcelFile() {
   const fileInput = document.getElementById('excelFileInput');
   if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
     alert("올릴 엑셀 파일을 선택해 주세요.");
@@ -790,51 +790,79 @@
   reader.onload = function(e) {
     try {
       const data = new Uint8Array(e.target.result);
-      // 어떤 엑셀 파일(.xlsx, .xls)이든 시트로 변환
       const workbook = XLSX.read(data, { type: 'array' });
 
-      // 보통 개인 데이터가 들어있는 마지막 시트(또는 첫 번째 시트) 선택
-      const sheetName = workbook.SheetNames[workbook.SheetNames.length - 1];
-      const worksheet = workbook.Sheets[sheetName];
-      const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-
       pushUndo();
-      let updatedCount = 0;
 
-      // 행별 데이터 읽기 (1열: 번호, 2열: 이름, 3열: 점수)
-      json.forEach(row => {
-        if (row && row.length >= 3) {
-          const no = parseInt(row[0]);
-          const name = String(row[1] || '').trim();
-          const rawScore = String(row[2] || '').replace("점", "").trim();
-          const score = parseInt(rawScore);
+      let updatedStudents = 0;
+      let updatedDepts = 0;
+      let updatedCivs = 0;
 
-          if (!isNaN(no)) {
-            const student = state.students.find(s => s.no === no);
-            if (student) {
-              if (name) student.name = name;
-              if (!isNaN(score)) student.score = score;
-              updatedCount++;
+      // 엑셀 내 모든 시트를 순회하며 점수 탐색
+      workbook.SheetNames.forEach(sheetName => {
+        const worksheet = workbook.Sheets[sheetName];
+        const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+        json.forEach(row => {
+          if (!row || row.length === 0) return;
+
+          const col0 = String(row[0] || '').trim();
+          const col1 = String(row[1] || '').trim();
+          const col2 = String(row[2] || '').trim();
+
+          // 1. 문명(국가) 점수 반영 (문명 이름 일치 시)
+          if (state.civilizations) {
+            const civ = state.civilizations.find(c => c.name === col0);
+            if (civ && row.length >= 2) {
+              const score = parseInt(col1.replace("점", "").trim());
+              if (!isNaN(score)) {
+                civ.score = score;
+                updatedCivs++;
+                return;
+              }
             }
           }
-        }
+
+          // 2. 모둠(부서) 점수 반영 (모둠 이름 일치 시)
+          const dept = state.departments.find(d => d.name === col0);
+          if (dept && row.length >= 2) {
+            const score = parseInt(col1.replace("점", "").trim());
+            if (!isNaN(score)) {
+              dept.score = score;
+              updatedDepts++;
+              return;
+            }
+          }
+
+          // 3. 학생 개인 점수 반영 (1열이 번호인 경우)
+          const no = parseInt(col0);
+          if (!isNaN(no) && row.length >= 3) {
+            const student = state.students.find(s => s.no === no);
+            if (student) {
+              const name = col1;
+              const score = parseInt(col2.replace("점", "").trim());
+              if (name) student.name = name;
+              if (!isNaN(score)) student.score = score;
+              updatedStudents++;
+            }
+          }
+        });
       });
 
-      if (updatedCount === 0) {
-        alert("엑셀에서 학생 데이터를 읽지 못했습니다. 번호/이름/점수 컬럼 위치를 확인해 주세요.");
+      if (updatedStudents === 0 && updatedDepts === 0 && updatedCivs === 0) {
+        alert("엑셀 파일에서 반영 가능한 데이터(학생/모둠/문명)를 찾지 못했습니다.");
         return;
       }
 
       localStorage.setItem("classCivilizationGame", JSON.stringify(state));
       render();
-      showToast(`${updatedCount}명의 학생 데이터를 성공적으로 불러왔습니다!`);
+      showToast(`성공적으로 복원되었습니다! (학생 ${updatedStudents}명, 모둠 ${updatedDepts}개, 문명 ${updatedCivs}개)`);
       closeModal();
     } catch (err) {
       alert("엑셀 파일을 읽는 도중 오류가 발생했습니다: " + err.message);
     }
   };
 
-  // 텍스트가 아닌 바이너리 배열로 파일을 읽음
   reader.readAsArrayBuffer(file);
 }
 
