@@ -703,26 +703,6 @@
       const c = document.getElementById("modalContent");
       m.classList.add("open");
 
-if (modalId === 'settings') {
-  const deptContainer = document.getElementById("deptScoreInputs");
-  if (deptContainer) {
-    deptContainer.innerHTML = state.departments.map(dept => `
-      <div style="display: flex; align-items: center; justify-content: space-between;">
-        <span style="font-weight: bold;">${dept.name}</span>
-        <input type="number" id="manual_dept_${dept.id}" value="${dept.score || 0}" style="width: 100px; padding: 4px; text-align: right;" />
-      </div>
-    `).join('');
-  }
-  const civContainer = document.getElementById("civScoreInputs");
-  if (civContainer) {
-    civContainer.innerHTML = (state.civilizations || []).map(civ => `
-      <div style="display: flex; align-items: center; justify-content: space-between;">
-        <span style="font-weight: bold;">${civ.name}</span>
-        <input type="number" id="manual_civ_${civ.id}" value="${civ.score || 0}" style="width: 100px; padding: 4px; text-align: right;" />
-      </div>
-    `).join('');
-  }
-}
       
       if (type === 'penalty') {
         c.innerHTML = `
@@ -803,6 +783,27 @@ if (modalId === 'settings') {
           </div>
         `;
       }
+
+      if (modalId === 'settings') {
+  const deptContainer = document.getElementById("deptScoreInputs");
+  if (deptContainer) {
+    deptContainer.innerHTML = state.departments.map(dept => `
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <span style="font-weight: bold;">${dept.name}</span>
+        <input type="number" id="manual_dept_${dept.id}" value="${dept.score || 0}" style="width: 100px; padding: 4px; text-align: right;" />
+      </div>
+    `).join('');
+  }
+  const civContainer = document.getElementById("civScoreInputs");
+  if (civContainer) {
+    civContainer.innerHTML = (state.civilizations || []).map(civ => `
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <span style="font-weight: bold;">${civ.name}</span>
+        <input type="number" id="manual_civ_${civ.id}" value="${civ.score || 0}" style="width: 100px; padding: 4px; text-align: right;" />
+      </div>
+    `).join('');
+  }
+}
     }
 
     function closeModal() { document.getElementById("modalBackdrop").classList.remove("open"); }
