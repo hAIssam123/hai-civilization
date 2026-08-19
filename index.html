@@ -223,7 +223,6 @@
         <div class="left-controls">
           <button class="btn btn-undo" id="undoBtn" onclick="undoAction()" disabled>↩ 되돌리기</button>
           <button class="btn btn-danger" onclick="openModal('penalty')">벌점</button>
-          <button class="btn btn-primary" onclick="collectTax()">세금</button>
           <button class="btn btn-gold" onclick="openModal('shop')">매점</button>
           <button class="btn btn-settle" onclick="manualSettleDay()">하루 마감</button>
           <button class="btn" onclick="openModal('settings')">설정</button>
@@ -311,6 +310,10 @@
     const MAX_UNDO = 40;
     let undoStack = [];
 
+    function round1(num) {
+      return Math.round((num + Number.EPSILON) * 10) / 10;
+    }
+
     function cloneState(s) { return JSON.parse(JSON.stringify(s)); }
     function pushUndo() {
       undoStack.push(cloneState(state));
@@ -384,8 +387,10 @@
     }
     function getTodayKey() { return new Date().toLocaleDateString("ko-KR"); }
     function getUnlockScore() { return STAGES[state.stageIndex].unlock; }
-    function getTodayContribution() { return Math.floor(state.departments.reduce((sum, d) => sum + (d.dailyScore || 0), 0) * 0.2); }
-    function getGaugeScore() { return state.classScore + getTodayContribution(); }
+    function getTodayContribution() { 
+      return round1(state.departments.reduce((sum, d) => sum + ((d.dailyScore || 0) * 0.2), 0)); 
+    }
+    function getGaugeScore() { return round1(state.classScore + getTodayContribution()); }
     function getRank(score) {
       if (!state.creditSystem) {
         if (score < 50) return "평민";
@@ -423,19 +428,33 @@
       const today = getTodayKey();
       if (!force && state.lastSettleDate === today) { if (!silent) showToast("오늘은 이미 마감되었습니다."); return false; }
       const recordDate = settleForDate || (force && state.lastSettleDate === today ? today + " (재마감)" : (state.lastSettleDate && state.lastSettleDate !== today ? state.lastSettleDate : today));
-      let dayTotal = 0;
+      
+      let totalTaxToday = 0;
+
       state.departments.forEach((dept, i) => {
         const score = dept.dailyScore || 0;
         if (score > 0) {
+          const tax = round1(score * 0.2);
+          const remainder = round1(score * 0.8);
+          totalTaxToday = round1(totalTaxToday + tax);
+
           state.departmentDailyLog.push({ date: recordDate, deptName: dept.name, group: dept.group, members: state.students.filter(s => s.groupId === i).length, score });
-          dayTotal += score;
+
+          const members = state.students.filter(s => s.groupId === i);
+          if (members.length > 0) {
+            const perMemberScore = round1(remainder / members.length);
+            members.forEach(s => {
+              s.score = round1((s.score || 0) + perMemberScore);
+            });
+          }
         }
       });
-      const contribution = Math.floor(dayTotal * 0.2);
-      if (contribution > 0) {
-        state.classScore += contribution;
-        state.civilizationLog.push({ date: recordDate, type: "일일 정산", delta: "+" + contribution, total: state.classScore });
+
+      if (totalTaxToday > 0) {
+        state.classScore = round1(state.classScore + totalTaxToday);
+        state.civilizationLog.push({ date: recordDate, type: "일일 소득세 정산(20%)", delta: "+" + totalTaxToday, total: state.classScore });
       }
+
       state.departments.forEach(dept => { dept.dailyScore = 0; dept.roleChecks = [false, false, false, false]; dept._bonusGiven = false; });
       state.lastSettleDate = today;
       localStorage.setItem("classCivilizationGame", JSON.stringify(state));
@@ -454,8 +473,8 @@
     }
 
     function manualSettleDay() {
-      if (confirm("오늘 획득한 모둠 점수를 시트에 기록하고 마감할까요?")) {
-        pushUndo(); settleDay({ force: true }); render();
+      if (confirm("오늘 모둠 점수를 마감할까요?\n(소득세 20%는 학급 문명 점수로, 나머지 80%는 모둠원 개인 점수로 정산됩니다)")) {
+        pushUndo(); settleDay({ force: true }); render(); showToast("오늘 하루 마감 및 세금/개인 점수 정산이 완료되었습니다!");
       }
     }
 
@@ -483,7 +502,7 @@
       const todayContrib = getTodayContribution();
       document.getElementById("gaugeText").textContent = `${current} / ${unlock} (${pct}%)`;
       document.getElementById("gaugeFill").style.width = pct + "%";
-      document.getElementById("gaugeMeta").textContent = `누적 학급 점수 ${state.classScore}점 + 오늘 기여 ${todayContrib}점 · 마지막 마감: ${state.lastSettleDate || "없음"}`;
+      document.getElementById("gaugeMeta").textContent = `누적 학급 점수 ${state.classScore}점 + 오늘 예상 세금 기여 ${todayContrib}점 · 마지막 마감: ${state.lastSettleDate || "없음"}`;
       const homeNextBtn = document.getElementById("homeNextStageBtn");
       if(current >= unlock) {
         homeNextBtn.disabled = false; homeNextBtn.textContent = "🚀 다음 단계로 진급 가능! (Unlock)";
@@ -564,7 +583,7 @@
                 return `<tr>
                   <td>${s.no}</td>
                   <td><input value="${escapeHtml(s.name)}" style="border:none;text-align:center;width:70px; background:transparent; color:#fff;" onchange="updateStudent(${s.no},'name',this.value)" /></td>
-                  <td><input type="number" value="${s.score}" style="width:60px;text-align:center; background:#222; color:#fff; border:1px solid #444;" onchange="updateStudent(${s.no},'score',+this.value)" /></td>
+                  <td><input type="number" step="0.1" value="${s.score}" style="width:65px;text-align:center; background:#222; color:#fff; border:1px solid #444;" onchange="updateStudent(${s.no},'score',+this.value)" /></td>
                   <td><span class="rank-badge rank-${rank}">${rank}</span></td>
                   <td><select onchange="updateStudentGroup(${s.no}, +this.value)" style="padding:4px 8px;border-radius:8px;border:1px solid #444; background:#222; color:#fff;">${groupOptions}</select></td>
                 </tr>`;
@@ -608,29 +627,10 @@
     function useMission(di) { mutateState(() => { state.departments[di].missionUsed = !state.departments[di].missionUsed; }); }
     function useWelfare(di) { mutateState(() => { state.departments[di].welfareUsed = !state.departments[di].welfareUsed; }); }
 
-    function collectTax() {
-      const hasAny = state.departments.some(d => (d.dailyScore || 0) > 0);
-      if (!hasAny) { showToast("징수할 모둠 점수가 없습니다"); return; }
-      pushUndo();
-      let totalTax = 0;
-      state.departments.forEach((dept, di) => {
-        if ((dept.dailyScore || 0) <= 0) return;
-        const incomeTax = Math.floor(dept.dailyScore * 0.2);
-        const remainder = dept.dailyScore - incomeTax;
-        dept.dailyScore = 0; totalTax += incomeTax;
-        const members = state.students.filter(s => s.groupId === di);
-        if (members.length > 0 && remainder > 0) {
-          const each = Math.floor(remainder / members.length); const extra = remainder % members.length;
-          members.forEach((s, idx) => { s.score += each + (idx < extra ? 1 : 0); });
-        }
-      });
-      state.classTax += totalTax; localStorage.setItem("classCivilizationGame", JSON.stringify(state)); render(); showToast(`세금 징수 완료!`);
-    }
-
     function applyPenalty(penaltyIdx, studentNo) {
       const p = state.penalties[penaltyIdx]; const s = state.students.find(x => x.no === studentNo);
       if (!s || !p) return;
-      pushUndo(); s.score += p.points; localStorage.setItem("classCivilizationGame", JSON.stringify(state)); render(); showToast(`${s.name} 벌점 부과`); closeModal();
+      pushUndo(); s.score = round1(s.score + p.points); localStorage.setItem("classCivilizationGame", JSON.stringify(state)); render(); showToast(`${s.name} 벌점 부과`); closeModal();
     }
 
     function tryUnlock() {
@@ -654,8 +654,7 @@
       let s1 = `<tr><th colspan="2">학급 및 문명개요</th></tr>`;
       s1 += `<tr><td>구분</td><td>값</td></tr>`;
       s1 += `<tr><td>현재 단계</td><td>${currentStageName}</td></tr>`;
-      s1 += `<tr><td>현재 학급 점수 (홈화면 기준)</td><td>${getGaugeScore()}점 (누적 ${state.classScore} + 금일 기여 ${getTodayContribution()})</td></tr>`;
-      s1 += `<tr><td>학급 세금 풀</td><td>${state.classTax}점</td></tr>`;
+      s1 += `<tr><td>현재 학급 점수 (홈화면 기준)</td><td>${getGaugeScore()}점 (누적 ${state.classScore} + 금일 예상 세금 ${getTodayContribution()})</td></tr>`;
       s1 += `<tr><td>마지막 마감일</td><td>${state.lastSettleDate || '없음'}</td></tr>`;
 
       let s2 = `<tr><th colspan="3">부서 모둠 데이터 (실시간)</th></tr>`;
@@ -725,7 +724,7 @@
         c.innerHTML = `
           <button class="modal-close" onclick="closeModal()">닫기</button>
           <h2>문명 매점</h2>
-          <p style="color:#aaa;">하루 마감 전 획득하거나 적립해 둔 포인트로 상품을 교환하세요.</p>
+          <p style="color:#aaa;">포인트로 상품을 교환하세요.</p>
         `;
       } else if (type === 'settings') {
         c.innerHTML = `
@@ -742,7 +741,7 @@
             <h3>🏛️ 전체 학급 문명 점수 수정</h3>
             <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px;">
               <span style="font-weight: bold;">누적 학급 문명 점수</span>
-              <input type="number" id="manual_class_score" value="${state.classScore || 0}" style="width: 120px; padding: 6px; text-align: right; background:#111; color:#fff; border:1px solid #444; border-radius:4px;" />
+              <input type="number" step="0.1" id="manual_class_score" value="${state.classScore || 0}" style="width: 120px; padding: 6px; text-align: right; background:#111; color:#fff; border:1px solid #444; border-radius:4px;" />
             </div>
           </div>
 
@@ -787,7 +786,7 @@
           deptContainer.innerHTML = state.departments.map(dept => `
             <div style="display: flex; align-items: center; justify-content: space-between;">
               <span style="font-weight: bold;">${escapeHtml(dept.name)}</span>
-              <input type="number" id="manual_dept_${dept.id}" value="${dept.dailyScore || 0}" style="width: 100px; padding: 4px; text-align: right; background:#111; color:#fff; border:1px solid #444; border-radius:4px;" />
+              <input type="number" step="0.1" id="manual_dept_${dept.id}" value="${dept.dailyScore || 0}" style="width: 100px; padding: 4px; text-align: right; background:#111; color:#fff; border:1px solid #444; border-radius:4px;" />
             </div>
           `).join('');
         }
@@ -830,7 +829,7 @@
 
               const dept = state.departments.find(d => d.name === col0);
               if (dept && row.length >= 2) {
-                const score = parseInt(col1.replace("점", "").trim());
+                const score = parseFloat(col1.replace("점", "").trim());
                 if (!isNaN(score)) {
                   dept.dailyScore = score;
                   updatedDepts++;
@@ -843,7 +842,7 @@
                 const student = state.students.find(s => s.no === no);
                 if (student) {
                   const name = col1;
-                  const score = parseInt(col2.replace("점", "").trim());
+                  const score = parseFloat(col2.replace("점", "").trim());
                   if (name) student.name = name;
                   if (!isNaN(score)) student.score = score;
                   updatedStudents++;
@@ -874,15 +873,15 @@
 
       const classScoreInput = document.getElementById("manual_class_score");
       if (classScoreInput) {
-        const val = parseInt(classScoreInput.value);
-        state.classScore = isNaN(val) ? 0 : val;
+        const val = parseFloat(classScoreInput.value);
+        state.classScore = isNaN(val) ? 0 : round1(val);
       }
 
       state.departments.forEach(dept => {
         const input = document.getElementById(`manual_dept_${dept.id}`);
         if (input) {
-          const val = parseInt(input.value);
-          dept.dailyScore = isNaN(val) ? 0 : val;
+          const val = parseFloat(input.value);
+          dept.dailyScore = isNaN(val) ? 0 : round1(val);
         }
       });
 
