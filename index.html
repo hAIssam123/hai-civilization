@@ -355,6 +355,8 @@
       return {
         stageIndex: 0, classScore: 0, lastSettleDate: null, creditSystem: false, classTax: 0,
         civilizationLog: [], departmentDailyLog: [],
+        civilizations: [
+          { id: 1, name: "문", score: 0 }],
         departments: DEFAULT_DEPTS.map((d, i) => ({
           ...d, dailyScore: 0, roleChecks: [false, false, false, false], missionUsed: false, welfareUsed: false, members: [],
         })),
@@ -367,6 +369,9 @@
       if (s.classScore === undefined) s.classScore = 0;
       if (!s.departmentDailyLog) s.departmentDailyLog = [];
       if (s.lastSettleDate === undefined) s.lastSettleDate = null;
+      if (!s.civilizations) {
+        s.civilizations = [
+          { id: 1, name: "문명", score: 0 }];
       if (!s.departments) s.departments = defaultState().departments;
       s.departments.forEach((d, i) => {
         if (d.dailyScore === undefined) d.dailyScore = d.score ?? 0;
