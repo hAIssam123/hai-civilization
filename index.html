@@ -751,6 +751,12 @@
         c.innerHTML = `
           <button class="modal-close" onclick="closeModal()">닫기</button>
           <h2>게임 마스터 설정</h2>
+
+<div class="setting-section">
+  <h3>📊 엑셀 파일(.xls) 직접 올려서 복원하기</h3>
+  <input type="file" id="excelFileInput" accept=".xls,.html" style="margin-bottom:8px; color:#fff;" />
+  <button class="btn btn-primary" onclick="importFromExcelFile()" style="width:100%;">📊 엑셀 파일 올려서 반영하기</button>
+</div>
           
           <div class="setting-section">
             <h3>📍 시작 단계 자유 이동</h3>
