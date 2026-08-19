@@ -796,6 +796,64 @@
 
     function closeModal() { document.getElementById("modalBackdrop").classList.remove("open"); }
     window.onload = () => { syncDeptMembers(); render(); };
+
+    function importFromExcelFile() {
+  const fileInput = document.getElementById('excelFileInput');
+  if (!fileInput.files || fileInput.files.length === 0) {
+    alert("올릴 엑셀 파일(.xls)을 선택해 주세요.");
+    return;
+  }
+
+  const file = fileInput.files[0];
+  const reader = new FileReader();
+
+  reader.onload = function(e) {
+    try {
+      const content = e.target.result;
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(content, "text/html");
+      const tables = doc.querySelectorAll("table");
+
+      if (tables.length < 3) {
+        alert("올바른 학급 문명 게임 백업 엑셀 파일이 아닙니다.");
+        return;
+      }
+
+      pushUndo(); // 되돌리기 저장
+
+      // 3번째 테이블(개인 점수)에서 학생 데이터 복원
+      const studentRows = tables[2].querySelectorAll("tbody tr, tr");
+      let updatedCount = 0;
+
+      studentRows.forEach((row, idx) => {
+        const cols = row.querySelectorAll("td");
+        if (cols.length >= 3) {
+          const no = parseInt(cols[0].textContent.trim());
+          const name = cols[1].textContent.trim();
+          const score = parseInt(cols[2].textContent.replace("점", "").trim());
+
+          if (!isNaN(no)) {
+            const student = state.students.find(s => s.no === no);
+            if (student) {
+              student.name = name;
+              if (!isNaN(score)) student.score = score;
+              updatedCount++;
+            }
+          }
+        }
+      });
+
+      localStorage.setItem("classCivilizationGame", JSON.stringify(state));
+      render();
+      showToast(`${updatedCount}명의 학생 데이터를 엑셀에서 성공적으로 불러왔습니다!`);
+      closeModal();
+    } catch (err) {
+      alert("엑셀 파일을 읽는 도중 오류가 발생했습니다.");
+    }
+  };
+
+  reader.readAsText(file, "UTF-8");
+}
   </script>
 </body>
 </html>
