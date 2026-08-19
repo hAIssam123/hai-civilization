@@ -703,6 +703,32 @@
       const c = document.getElementById("modalContent");
       m.classList.add("open");
 
+      // 설정 모달 열 때 실행되는 부분에 추가
+if (modalId === 'settings') {
+  // 1. 부서(모둠) 점수 Input 생성
+  const deptContainer = document.getElementById("deptScoreInputs");
+  if (deptContainer) {
+    deptContainer.innerHTML = state.departments.map(dept => `
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <span style="font-weight: bold;">${dept.name}</span>
+        <input type="number" id="manual_dept_${dept.id}" value="${dept.score || 0}" style="width: 100px; padding: 4px; text-align: right;" />
+      </div>
+    `).join('');
+  }
+
+  // 2. 문명 점수 Input 생성
+  const civContainer = document.getElementById("civScoreInputs");
+  if (civContainer) {
+    civContainer.innerHTML = (state.civilizations || []).map(civ => `
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <span style="font-weight: bold;">${civ.name}</span>
+        <input type="number" id="manual_civ_${civ.id}" value="${civ.score || 0}" style="width: 100px; padding: 4px; text-align: right;" />
+      </div>
+    `).join('');
+  }
+}
+
+      
       if (type === 'penalty') {
         c.innerHTML = `
           <button class="modal-close" onclick="closeModal()">닫기</button>
@@ -734,16 +760,26 @@
       } else if (type === 'settings') {
         c.innerHTML = `
           <button class="modal-close" onclick="closeModal()">닫기</button>
-          <h2>게임 마스터 설정</h2>
-
-
-          
+          <h2>게임 마스터 설정</h2>          
           <div class="setting-section">
             <h3>📍 시작 단계 자유 이동</h3>
             <div class="stage-select-grid">
               ${STAGES.map((st, idx) => `<button class="btn-stage-pick ${state.stageIndex === idx ? 'current' : ''}" onclick="setStageFromSettings(${idx})">${st.name}</button>`).join("")}
             </div>
           </div>
+<div class="setting-section">
+  <h3>📊 부서 점수 수정</h3>
+  <div id="deptScoreInputs" style="display: flex; flex-direction: column; gap: 8px;"></div>
+</div>
+
+<div class="setting-section" style="margin-top: 15px;">
+  <h3>🏛️ 문명 점수 수정</h3>
+  <div id="civScoreInputs" style="display: flex; flex-direction: column; gap: 8px;"></div>
+</div>
+
+<button class="btn btn-primary" onclick="saveManualScores()" style="margin-top: 15px; width: 100%;">
+  💾 변경된 점수 저장하기
+</button>
 
           <div class="setting-section">
             <h3>👥 학생 인원 수 조절 및 관리</h3>
@@ -864,6 +900,36 @@
   };
 
   reader.readAsArrayBuffer(file);
+}
+
+    function saveManualScores() {
+  pushUndo(); // 되돌리기용 상태 저장
+
+  // 1. 모둠(부서) 점수 반영
+  state.departments.forEach(dept => {
+    const input = document.getElementById(`manual_dept_${dept.id}`);
+    if (input) {
+      const val = parseInt(input.value);
+      dept.score = isNaN(val) ? 0 : val;
+    }
+  });
+
+  // 2. 문명 점수 반영
+  if (state.civilizations) {
+    state.civilizations.forEach(civ => {
+      const input = document.getElementById(`manual_civ_${civ.id}`);
+      if (input) {
+        const val = parseInt(input.value);
+        civ.score = isNaN(val) ? 0 : val;
+      }
+    });
+  }
+
+  // 데이터 저장 및 화면 갱신
+  localStorage.setItem("classCivilizationGame", JSON.stringify(state));
+  render();
+  showToast("모둠 및 문명 점수가 성공적으로 수정되었습니다!");
+  closeModal();
 }
 
   </script>
