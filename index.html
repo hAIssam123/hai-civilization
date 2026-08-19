@@ -695,24 +695,7 @@
       }
     }
 
-    function importBackupCode() {
-      const codeStr = document.getElementById("importCodeArea").value.trim();
-      if (!codeStr) { alert("가져올 백업 텍스트 코드를 입력해 주세요."); return; }
-      try {
-        const parsedState = JSON.parse(decodeURIComponent(atob(codeStr)));
-        if (parsedState && typeof parsedState === 'object' && parsedState.students) {
-          if (confirm("백업 데이터를 프로그램에 올려 반영하시겠습니까? (기존 데이터 덮어쓰기)")) {
-            pushUndo();
-            state = migrateState(parsedState);
-            syncDeptMembers();
-            localStorage.setItem("classCivilizationGame", JSON.stringify(state));
-            render();
-            showToast("성공적으로 데이터를 가져왔습니다!");
-            closeModal();
-          }
-        } else { alert("유효하지 않은 데이터 구조입니다."); }
-      } catch (e) { alert("백업 코드를 해석하는 도중 오류가 발생했습니다."); }
-    }
+
 
     function openModal(type) {
       const m = document.getElementById("modalBackdrop");
@@ -752,11 +735,7 @@
           <button class="modal-close" onclick="closeModal()">닫기</button>
           <h2>게임 마스터 설정</h2>
 
-<div class="setting-section">
-  <h3>📊 엑셀 파일(.xls) 직접 올려서 복원하기</h3>
-  <input type="file" id="excelFileInput" accept=".xls,.html" style="margin-bottom:8px; color:#fff;" />
-  <button class="btn btn-primary" onclick="importFromExcelFile()" style="width:100%;">📊 엑셀 파일 올려서 반영하기</button>
-</div>
+
           
           <div class="setting-section">
             <h3>📍 시작 단계 자유 이동</h3>
@@ -774,11 +753,11 @@
             </div>
           </div>
 
-          <div class="setting-section">
-            <h3>📥 데이터 가져오기 (프로그램에 올려 반영)</h3>
-            <textarea id="importCodeArea" placeholder="이곳에 내보내기/백업했던 텍스트 코드를 붙여넣으세요."></textarea>
-            <button class="btn btn-primary" onclick="importBackupCode()" style="margin-top:6px; width:100%;">⚡ 데이터 올려서 반영하기</button>
-          </div>
+        <div class="setting-section">
+  <h3>📊 데이터 가져오기 (.xls)</h3>
+  <input type="file" id="excelFileInput" accept=".xls,.html" style="margin-bottom:8px; color:#fff;" />
+  <button class="btn btn-primary" onclick="importFromExcelFile()" style="width:100%;">📊 엑셀 파일 올려서 반영하기</button>
+</div>
 
           <div class="setting-section">
             <h3>📤 데이터 내보내기 및 텍스트 백업</h3>
